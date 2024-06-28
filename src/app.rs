@@ -4,15 +4,34 @@ use ratatui::{
     crossterm::event::{self, KeyCode, KeyEvent, KeyEventKind},
     symbols::border,
     widgets::{
-        block::{Position, Title},
-        Block, Paragraph, Widget,
+        block::{Position, Title}, Block, Paragraph, Tabs, Widget
     },
 };
 
 use ratatui::prelude::*;
 
-use crate::{components::ship_status::MyGauge, tui};
+use crate::{components::ship_status::ShipStatus, tui};
 
+const TITLE_HEADER: &str = r#"
+     _                      _______                      _      
+  _dMMMb._              .adOOOOOOOOOba.              _,dMMMb_   
+ dP'  ~YMMb            dOOOOOOOOOOOOOOOb            aMMP~  `Yb  
+ V      ~"Mb          dOOOOOOOOOOOOOOOOOb          dM"~      V  
+          `Mb.       dOOOOOOOOOOOOOOOOOOOb       ,dM'           
+           `YMb._   |OOOOOOOOOOOOOOOOOOOOO|   _,dMP'            
+      __     `YMMM| OP'~"YOOOOOOOOOOOP"~`YO |MMMP'     __       
+    ,dMMMb.     ~~' OO     `YOOOOOP'     OO `~~     ,dMMMb.     
+ _,dP~  `YMba_      OOb      `OOO'      dOO      _aMMP'  ~Yb._  
+             `YMMMM\`OOOo     OOO     oOOO'/MMMMP'              
+     ,aa.     `~YMMb `OOOb._,dOOOb._,dOOO'dMMP~'       ,aa.     
+   ,dMYYMba._         `OOOOOOOOOOOOOOOOO'          _,adMYYMb.   
+  ,MP'   `YMMba._      OOOOOOOOOOOOOOOOO       _,adMMP'   `YM.  
+  MP'        ~YMMMba._ YOOOOPVVVVVYOOOOP  _,adMMMMP~       `YM  
+  YMb           ~YMMMM\`OOOOI`````IOOOOO'/MMMMP~           dMP  
+   `Mb.           `YMMMb`OOOI,,,,,IOOOO'dMMMP'           ,dM'   
+     `'                  `OObNNNNNdOO'                   `'     
+                           `~OOOOO~'                            
+"#;
 
 #[derive(Debug)]
 enum Selected {
@@ -21,6 +40,7 @@ enum Selected {
 
 #[derive(Debug)]
 pub struct App {
+    selected_tab: usize,
     selected: Selected,
     exit: bool,
 }
@@ -28,6 +48,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         Self {
+            selected_tab: 0,
             selected: Selected::Status,
             exit: false,
         }
@@ -51,19 +72,9 @@ impl App {
             ])
             .split(frame.size());
 
-        let gauges = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Length(3),
-                Constraint::Length(3),
-            ])
-            .split(chunks[1]);
 
         frame.render_widget(self, chunks[0]);
-        frame.render_widget(&MyGauge::new("Shields", 0.9, Color::Blue), gauges[0]);
-        frame.render_widget(&MyGauge::new("Power", 0.5, Color::Yellow), gauges[1]);
-        frame.render_widget(&MyGauge::new("Fuel", 0.3, Color::Red), gauges[2]);
+        ShipStatus.draw(frame, chunks[1]);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -78,8 +89,8 @@ impl App {
     fn handle_press_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q')  => { self.exit = true; },
-            KeyCode::Up         => {},
-            KeyCode::Down       => {},
+            KeyCode::Up         => { self.selected_tab = (self.selected_tab + 4 + 1) % 4; },
+            KeyCode::Down       => { self.selected_tab = (self.selected_tab + 4 - 1) % 4 },
             _ => {},
         }
     }
@@ -87,7 +98,7 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from(" Counter App Tutorial ".bold());
+        let title = Title::from(" M0TH3R@E ".bold());
         let instructions = Title::from(Line::from(vec![
                 " Quit ".into(),
                 "<Q> ".blue().bold(),
@@ -101,14 +112,22 @@ impl Widget for &App {
             )
             .border_set(border::THICK);
 
-        let text = Text::from(vec![Line::from(vec![
-                "Hello world".into(),
-        ])]);
+        let text = Text::from(TITLE_HEADER)
+            .fg(Color::Green);
 
         Paragraph::new(text)
             .centered()
             .block(block)
             .render(area, buf);
+
+        //Tabs::new(vec!["Tab1", "Tab2", "Tab3", "Tab4"])
+        //    .block(Block::bordered().title("Tabs"))
+        //    .style(Style::default().white())
+        //    .highlight_style(Style::default().yellow())
+        //    .select(self.selected_tab)
+        //    .divider(symbols::DOT)
+        //    .padding("->", "<-")
+        //    .render(area, buf);
     }
 }
 

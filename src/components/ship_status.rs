@@ -44,3 +44,23 @@ impl Widget for &MyGauge {
     }
 }
 
+#[derive(Default)]
+pub struct ShipStatus;
+
+impl ShipStatus {
+    pub fn draw(self, frame: &mut Frame, rect: Rect) {
+        let gauges = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Length(3),
+                Constraint::Length(3),
+            ])
+            .split(rect);
+
+        frame.render_widget(&MyGauge::new("Shields", 0.9, Color::Blue), gauges[0]);
+        frame.render_widget(&MyGauge::new("Power", 0.5, Color::Yellow), gauges[1]);
+        frame.render_widget(&MyGauge::new("Fuel", 0.3, Color::Red), gauges[2]);
+    }
+}
+
