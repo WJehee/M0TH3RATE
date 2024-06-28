@@ -47,7 +47,9 @@ impl App {
 
     fn handle_press_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => { self.exit = true; },
+            KeyCode::Char('q')  => { self.exit = true; },
+            KeyCode::Left       => { self.counter -= 1 },
+            KeyCode::Right      => { self.counter += 1 },
             _ => {},
         }
     }
