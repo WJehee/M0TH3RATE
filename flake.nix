@@ -1,5 +1,5 @@
 {
-    description = "Rust template";
+    description = "Mothership terminal";
 
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
@@ -14,10 +14,6 @@
             inherit system overlays;
         };
         rust-toolchain = pkgs.rust-bin.stable.latest.default;
-        #rust-toolchain = pkgs.rust-bin.nightly.latest.default.override {
-        #    extensions = [ "rust-src" ];
-        #    targets = [ "wasm32-unknown-unknown" ];
-        #};
     in {
         devShells.${system}.default = with pkgs; mkShell {
             buildInputs = [
@@ -26,6 +22,8 @@
                 rust-analyzer
                 rustfmt
                 clippy
+
+                cool-retro-term
             ];
             shellHook = ''
             '';
