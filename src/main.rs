@@ -8,11 +8,12 @@ use color_eyre::{
 
 mod tui;
 mod app;
+mod components;
 
 fn main() -> Result<()> {
     install_hooks()?;
     let mut terminal = tui::init()?;
-    let _app_result = app::App::default().run(&mut terminal);
+    let _app_result = app::App::new().run(&mut terminal);
     tui::restore()?;
     Ok(())
 }

@@ -1,28 +1,38 @@
 use std::io;
 
 use ratatui::{
-    buffer::Buffer,
-    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
-    layout::{Alignment, Rect},
-    style::Stylize,
+    crossterm::event::{self, KeyCode, KeyEvent, KeyEventKind},
     symbols::border,
-    text::{Line, Text},
     widgets::{
         block::{Position, Title},
         Block, Paragraph, Widget,
     },
-    Frame,
 };
 
-use crate::tui;
+use ratatui::prelude::*;
 
-#[derive(Debug, Default)]
+use crate::{components::ship_status::MyGauge, tui};
+
+
+#[derive(Debug)]
+enum Selected {
+    Status,
+}
+
+#[derive(Debug)]
 pub struct App {
-    counter: u8,
+    selected: Selected,
     exit: bool,
 }
 
 impl App {
+    pub fn new() -> Self {
+        Self {
+            selected: Selected::Status,
+            exit: false,
+        }
+    }
+
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut tui::Tui) -> io::Result<()> {
         while !self.exit {
@@ -33,7 +43,27 @@ impl App {
     }
 
     fn render_frame(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(70),
+                Constraint::Percentage(30),
+            ])
+            .split(frame.size());
+
+        let gauges = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Length(3),
+                Constraint::Length(3),
+            ])
+            .split(chunks[1]);
+
+        frame.render_widget(self, chunks[0]);
+        frame.render_widget(&MyGauge::new("Shields", 0.9, Color::Blue), gauges[0]);
+        frame.render_widget(&MyGauge::new("Power", 0.5, Color::Yellow), gauges[1]);
+        frame.render_widget(&MyGauge::new("Fuel", 0.3, Color::Red), gauges[2]);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -48,8 +78,8 @@ impl App {
     fn handle_press_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q')  => { self.exit = true; },
-            KeyCode::Left       => { self.counter -= 1 },
-            KeyCode::Right      => { self.counter += 1 },
+            KeyCode::Up         => {},
+            KeyCode::Down       => {},
             _ => {},
         }
     }
@@ -59,10 +89,6 @@ impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Title::from(" Counter App Tutorial ".bold());
         let instructions = Title::from(Line::from(vec![
-                " Decrement ".into(),
-                "<Left>".blue().bold(),
-                " Increment ".into(),
-                "<Right>".blue().bold(),
                 " Quit ".into(),
                 "<Q> ".blue().bold(),
         ]));
@@ -75,12 +101,11 @@ impl Widget for &App {
             )
             .border_set(border::THICK);
 
-        let counter_text = Text::from(vec![Line::from(vec![
-                "Value: ".into(),
-                self.counter.to_string().yellow(),
+        let text = Text::from(vec![Line::from(vec![
+                "Hello world".into(),
         ])]);
 
-        Paragraph::new(counter_text)
+        Paragraph::new(text)
             .centered()
             .block(block)
             .render(area, buf);
