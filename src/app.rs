@@ -4,7 +4,7 @@ use ratatui::{
     crossterm::event::{self, KeyCode, KeyEvent, KeyEventKind},
     symbols::border,
     widgets::{
-        block::{Position, Title}, Block, Paragraph, Tabs, Widget
+        block::{Position, Title}, Block, List, ListState, Paragraph, Widget
     },
 };
 
@@ -31,6 +31,10 @@ const TITLE_HEADER: &str = r#"
    `Mb.           `YMMMb`OOOI,,,,,IOOOO'dMMMP'           ,dM'   
      `'                  `OObNNNNNdOO'                   `'     
                            `~OOOOO~'                            
+
+M0TH3R@3-OS
+
+####################################################################
 "#;
 
 #[derive(Debug)]
@@ -67,14 +71,39 @@ impl App {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(70),
-                Constraint::Percentage(30),
+                Constraint::Percentage(35),
+                Constraint::Percentage(65),
             ])
             .split(frame.size());
 
+        let left = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(60),
+                Constraint::Percentage(40),
+            ])
+            .split(chunks[0]);
 
-        frame.render_widget(self, chunks[0]);
-        ShipStatus.draw(frame, chunks[1]);
+        frame.render_widget(self, left[0]);
+        ShipStatus.draw(frame, left[1]);
+
+        let title = Title::from(" Ship Status ".bold());
+        let block = Block::bordered()
+            .title(
+                title
+                    .alignment(Alignment::Center)
+                    .position(Position::Bottom)
+            )
+            .border_set(border::THICK);
+
+        frame.render_widget(block, left[1]);
+
+        let title = Title::from(" Map ".bold());
+        let block = Block::bordered()
+            .title(title.alignment(Alignment::Center))
+            .border_set(border::THICK);
+
+        frame.render_widget(block, chunks[1]);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -91,6 +120,7 @@ impl App {
             KeyCode::Char('q')  => { self.exit = true; },
             KeyCode::Up         => { self.selected_tab = (self.selected_tab + 4 + 1) % 4; },
             KeyCode::Down       => { self.selected_tab = (self.selected_tab + 4 - 1) % 4 },
+            KeyCode::Enter      => {},
             _ => {},
         }
     }
@@ -98,13 +128,17 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from(" M0TH3R@E ".bold());
         let instructions = Title::from(Line::from(vec![
+                " Select ".into(),
+                "<Enter>".green().bold(),
+                " Move up ".into(),
+                "<Up>".green().bold(),
+                " Move down ".into(),
+                "<Down>".green().bold(),
                 " Quit ".into(),
-                "<Q> ".blue().bold(),
+                "<Q> ".green().bold(),
         ]));
         let block = Block::bordered()
-            .title(title.alignment(Alignment::Center))
             .title(
                 instructions
                 .alignment(Alignment::Center)
@@ -120,14 +154,18 @@ impl Widget for &App {
             .block(block)
             .render(area, buf);
 
-        //Tabs::new(vec!["Tab1", "Tab2", "Tab3", "Tab4"])
-        //    .block(Block::bordered().title("Tabs"))
-        //    .style(Style::default().white())
-        //    .highlight_style(Style::default().yellow())
-        //    .select(self.selected_tab)
-        //    .divider(symbols::DOT)
-        //    .padding("->", "<-")
-        //    .render(area, buf);
+        let items = ["Item 1", "Item 2", "Item 3"];
+        let mut list_state = ListState::default();
+
+        ratatui::prelude::StatefulWidget::render(
+            List::new(items)
+            .block(Block::bordered().title("List"))
+            .style(Style::default().fg(Color::White))
+            .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
+            .highlight_symbol(">>")
+            .repeat_highlight_symbol(true),
+            area, buf, &mut list_state
+        );
     }
 }
 

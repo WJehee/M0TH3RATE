@@ -1,4 +1,6 @@
+use block::Title;
 use ratatui::{prelude::*, widgets::*};
+use symbols::border;
 
 #[derive(Debug)]
 pub struct MyGauge {
