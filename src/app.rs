@@ -13,7 +13,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 
 use ratatui::prelude::*;
 
-use crate::{components::ship_status::ShipStatus, tui};
+use crate::{components::{ship_status::ShipStatus, star_map::StarMap}, tui};
 
 const TITLE_HEADER: &str = r#"
      _                      _______                      _      
@@ -40,7 +40,7 @@ M0TH3R@3-OS
 
 #[derive(Debug, Copy, Clone, FromPrimitive, ToPrimitive, strum::AsRefStr)]
 enum MenuItem {
-    Map = 0,
+    StarMap = 0,
     Crew,
     Info,
 }
@@ -73,7 +73,7 @@ impl App {
         Self {
             menu: MenuState {
                 list_state: ListState::default().with_selected(Some(0)),
-                selected: MenuItem::Map,
+                selected: MenuItem::StarMap,
             },
             exit: false,
         }
@@ -146,13 +146,13 @@ impl App {
         ]).areas(area);
 
         let menu = List::new([
-            Line::from(MenuItem::Map.as_ref()).alignment(Alignment::Center),
+            Line::from(MenuItem::StarMap.as_ref()).alignment(Alignment::Center),
             Line::from(MenuItem::Crew.as_ref()).alignment(Alignment::Center),
             Line::from(MenuItem::Info.as_ref()).alignment(Alignment::Center),
         ])
             .style(Style::default().fg(Color::White))
             .highlight_style(Style::default()
-                .add_modifier(Modifier::ITALIC)
+                .bold()
                 .fg(Color::Green)
             )
             .repeat_highlight_symbol(true);
@@ -189,10 +189,11 @@ impl Widget for &mut App {
         let inner = block.inner(right);
         block.render(right, buf);
 
+        let map = StarMap::new();
         match self.menu.selected {
-            MenuItem::Map   => {},
-            MenuItem::Crew  => {},
-            MenuItem::Info  => {},
+            MenuItem::StarMap   => { map.render(inner, buf); },
+            MenuItem::Crew      => {},
+            MenuItem::Info      => {},
         }
     }
 }
