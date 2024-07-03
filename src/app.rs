@@ -8,6 +8,8 @@ use ratatui::{
     },
 };
 
+use num_traits::FromPrimitive;
+
 use ratatui::prelude::*;
 
 use crate::{components::ship_status::ShipStatus, tui};
@@ -33,32 +35,29 @@ const TITLE_HEADER: &str = r#"
                            `~OOOOO~'                            
 
 M0TH3R@3-OS
-
-####################################################################
 "#;
 
-#[derive(Debug)]
-enum Selected {
-    Status,
+#[derive(Debug, Copy, Clone, num_derive::FromPrimitive, strum::AsRefStr)]
+enum MenuItem {
+    Map = 0,
+    Crew,
+    Info,
 }
 
 #[derive(Debug)]
 pub struct App {
-    selected_tab: usize,
-    selected: Selected,
+    selected: MenuItem,
     exit: bool,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
-            selected_tab: 0,
-            selected: Selected::Status,
+            selected: MenuItem::Map,
             exit: false,
         }
     }
 
-    /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut tui::Tui) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.render_frame(frame))?;
@@ -67,43 +66,8 @@ impl App {
         Ok(())
     }
 
-    fn render_frame(&self, frame: &mut Frame) {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(35),
-                Constraint::Percentage(65),
-            ])
-            .split(frame.size());
-
-        let left = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage(60),
-                Constraint::Percentage(40),
-            ])
-            .split(chunks[0]);
-
-        frame.render_widget(self, left[0]);
-        ShipStatus.draw(frame, left[1]);
-
-        let title = Title::from(" Ship Status ".bold());
-        let block = Block::bordered()
-            .title(
-                title
-                    .alignment(Alignment::Center)
-                    .position(Position::Bottom)
-            )
-            .border_set(border::THICK);
-
-        frame.render_widget(block, left[1]);
-
-        let title = Title::from(" Map ".bold());
-        let block = Block::bordered()
-            .title(title.alignment(Alignment::Center))
-            .border_set(border::THICK);
-
-        frame.render_widget(block, chunks[1]);
+    fn render_frame(&mut self, frame: &mut Frame) {
+        frame.render_widget(self, frame.size());
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -118,16 +82,22 @@ impl App {
     fn handle_press_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q')  => { self.exit = true; },
-            KeyCode::Up         => { self.selected_tab = (self.selected_tab + 4 + 1) % 4; },
-            KeyCode::Down       => { self.selected_tab = (self.selected_tab + 4 - 1) % 4 },
+            KeyCode::Up         => { self.select(false); },
+            KeyCode::Down       => { self.select(true); },
             KeyCode::Enter      => {},
             _ => {},
         }
     }
-}
 
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+    fn select(&mut self, below: bool) {
+        let value = if below { -1 } else { 1 };
+        self.selected = match FromPrimitive::from_i8(self.selected as i8 + value) {
+            Some(d2) => d2,
+            None => FromPrimitive::from_u8(0).unwrap(),
+        }
+    }
+
+    fn render_title(&mut self, area: Rect, buf: &mut Buffer) {
         let instructions = Title::from(Line::from(vec![
                 " Select ".into(),
                 "<Enter>".green().bold(),
@@ -153,19 +123,47 @@ impl Widget for &App {
             .centered()
             .block(block)
             .render(area, buf);
+    }
 
-        let items = ["Item 1", "Item 2", "Item 3"];
+    fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let mut list_state = ListState::default();
-
-        ratatui::prelude::StatefulWidget::render(
-            List::new(items)
-            .block(Block::bordered().title("List"))
+        let menu = List::new([MenuItem::Map.as_ref(), MenuItem::Crew.as_ref(), MenuItem::Info.as_ref()])
             .style(Style::default().fg(Color::White))
             .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
             .highlight_symbol(">>")
-            .repeat_highlight_symbol(true),
-            area, buf, &mut list_state
-        );
+            .repeat_highlight_symbol(true);
+        
+        ratatui::prelude::StatefulWidget::render(menu, area, buf, &mut list_state);
     }
 }
+
+
+impl Widget for &mut App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let [left, right] = Layout::horizontal([
+                Constraint::Percentage(35),
+                Constraint::Percentage(65),
+            ]).areas(area);
+
+        let [title, list, ship_status] = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(35),
+                Constraint::Percentage(25),
+                Constraint::Percentage(40),
+            ])
+            .areas(left);
+
+        self.render_title(title, buf);
+        self.render_list(list, buf);
+        ShipStatus.render(ship_status, buf);
+
+        let title = Title::from(" Map ".bold());
+        let block = Block::bordered()
+            .title(title.alignment(Alignment::Center))
+            .border_set(border::THICK);
+        block.render(right, buf);
+    }
+}
+
 

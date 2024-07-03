@@ -1,5 +1,6 @@
 use block::Title;
 use ratatui::{prelude::*, widgets::*};
+use ratatui::widgets::block::Position;
 use symbols::border;
 
 #[derive(Debug)]
@@ -49,20 +50,29 @@ impl Widget for &MyGauge {
 #[derive(Default)]
 pub struct ShipStatus;
 
-impl ShipStatus {
-    pub fn draw(self, frame: &mut Frame, rect: Rect) {
-        let gauges = Layout::default()
+impl Widget for &ShipStatus {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let [shields, power, fuel] = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3),
                 Constraint::Length(3),
                 Constraint::Length(3),
             ])
-            .split(rect);
+            .areas(area);
 
-        frame.render_widget(&MyGauge::new("Shields", 0.9, Color::Blue), gauges[0]);
-        frame.render_widget(&MyGauge::new("Power", 0.5, Color::Yellow), gauges[1]);
-        frame.render_widget(&MyGauge::new("Fuel", 0.3, Color::Red), gauges[2]);
+        MyGauge::new("Shields", 0.9, Color::Blue).render(shields, buf);
+        MyGauge::new("Power", 0.5, Color::Yellow).render(power, buf);
+        MyGauge::new("Fuel", 0.3, Color::Red).render(fuel, buf);
+
+        let title = Title::from(" Ship Status ".bold());
+        let block = Block::bordered()
+            .title(
+                title
+                    .alignment(Alignment::Center)
+                    .position(Position::Bottom)
+            )
+            .border_set(border::THICK);
+        block.render(area, buf);
     }
 }
-
