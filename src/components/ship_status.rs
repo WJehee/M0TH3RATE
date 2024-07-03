@@ -52,19 +52,6 @@ pub struct ShipStatus;
 
 impl Widget for &ShipStatus {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [shields, power, fuel] = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Length(3),
-                Constraint::Length(3),
-            ])
-            .areas(area);
-
-        MyGauge::new("Shields", 0.9, Color::Blue).render(shields, buf);
-        MyGauge::new("Power", 0.5, Color::Yellow).render(power, buf);
-        MyGauge::new("Fuel", 0.3, Color::Red).render(fuel, buf);
-
         let title = Title::from(" Ship Status ".bold());
         let block = Block::bordered()
             .title(
@@ -73,6 +60,21 @@ impl Widget for &ShipStatus {
                     .position(Position::Bottom)
             )
             .border_set(border::THICK);
+
+        let inner = block.inner(area);
         block.render(area, buf);
+
+        let [shields, power, fuel] = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Length(3),
+                Constraint::Length(3),
+            ])
+            .areas(inner);
+
+        MyGauge::new("Shields", 0.9, Color::Blue).render(shields, buf);
+        MyGauge::new("Power", 0.5, Color::Yellow).render(power, buf);
+        MyGauge::new("Fuel", 0.3, Color::Red).render(fuel, buf);
     }
 }

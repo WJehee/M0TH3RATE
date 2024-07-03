@@ -8,7 +8,8 @@ use ratatui::{
     },
 };
 
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
+use num_derive::{FromPrimitive, ToPrimitive};
 
 use ratatui::prelude::*;
 
@@ -37,7 +38,7 @@ const TITLE_HEADER: &str = r#"
 M0TH3R@3-OS
 "#;
 
-#[derive(Debug, Copy, Clone, num_derive::FromPrimitive, strum::AsRefStr)]
+#[derive(Debug, Copy, Clone, FromPrimitive, ToPrimitive, strum::AsRefStr)]
 enum MenuItem {
     Map = 0,
     Crew,
@@ -45,15 +46,35 @@ enum MenuItem {
 }
 
 #[derive(Debug)]
-pub struct App {
+struct MenuState {
+    list_state: ListState,
     selected: MenuItem,
+}
+
+impl MenuState {
+    fn select(&mut self, offset: i8) {
+        // TODO: wraps around on the bottom but not on the top, fix it
+        self.selected = match FromPrimitive::from_i8(self.selected as i8 + offset) {
+            Some(d2) => d2,
+            None => FromPrimitive::from_u8(0).unwrap(),
+        };
+        self.list_state.select(self.selected.to_usize());
+    }
+}
+
+#[derive(Debug)]
+pub struct App {
+    menu: MenuState,
     exit: bool,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
-            selected: MenuItem::Map,
+            menu: MenuState {
+                list_state: ListState::default().with_selected(Some(0)),
+                selected: MenuItem::Map,
+            },
             exit: false,
         }
     }
@@ -82,18 +103,10 @@ impl App {
     fn handle_press_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q')  => { self.exit = true; },
-            KeyCode::Up         => { self.select(false); },
-            KeyCode::Down       => { self.select(true); },
+            KeyCode::Up         => { self.menu.select(-1); },
+            KeyCode::Down       => { self.menu.select(1); },
             KeyCode::Enter      => {},
             _ => {},
-        }
-    }
-
-    fn select(&mut self, below: bool) {
-        let value = if below { -1 } else { 1 };
-        self.selected = match FromPrimitive::from_i8(self.selected as i8 + value) {
-            Some(d2) => d2,
-            None => FromPrimitive::from_u8(0).unwrap(),
         }
     }
 
@@ -126,14 +139,25 @@ impl App {
     }
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
-        let mut list_state = ListState::default();
-        let menu = List::new([MenuItem::Map.as_ref(), MenuItem::Crew.as_ref(), MenuItem::Info.as_ref()])
+        let [_padding_top, menu_pos, _padding_bottom] = Layout::vertical([
+            Constraint::Percentage(25),
+            Constraint::Percentage(50),
+            Constraint::Percentage(25),
+        ]).areas(area);
+
+        let menu = List::new([
+            Line::from(MenuItem::Map.as_ref()).alignment(Alignment::Center),
+            Line::from(MenuItem::Crew.as_ref()).alignment(Alignment::Center),
+            Line::from(MenuItem::Info.as_ref()).alignment(Alignment::Center),
+        ])
             .style(Style::default().fg(Color::White))
-            .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-            .highlight_symbol(">>")
+            .highlight_style(Style::default()
+                .add_modifier(Modifier::ITALIC)
+                .fg(Color::Green)
+            )
             .repeat_highlight_symbol(true);
         
-        ratatui::prelude::StatefulWidget::render(menu, area, buf, &mut list_state);
+        ratatui::prelude::StatefulWidget::render(menu, menu_pos, buf, &mut self.menu.list_state);
     }
 }
 
@@ -158,12 +182,18 @@ impl Widget for &mut App {
         self.render_list(list, buf);
         ShipStatus.render(ship_status, buf);
 
-        let title = Title::from(" Map ".bold());
+        let title = Title::from(self.menu.selected.as_ref().bold());
         let block = Block::bordered()
             .title(title.alignment(Alignment::Center))
             .border_set(border::THICK);
+        let inner = block.inner(right);
         block.render(right, buf);
+
+        match self.menu.selected {
+            MenuItem::Map   => {},
+            MenuItem::Crew  => {},
+            MenuItem::Info  => {},
+        }
     }
 }
-
 
