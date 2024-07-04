@@ -1,5 +1,7 @@
-use ratatui::{prelude::*, widgets::canvas::{Canvas, Circle, Context, Line, Rectangle}};
+use ratatui::{crossterm::event::{KeyCode, KeyEvent}, prelude::*, widgets::{block::Title, canvas::{Canvas, Circle, Context, Line}, Block}};
+use symbols::border;
 
+#[derive(Debug)]
 struct Location {
     x: f64,
     y: f64,
@@ -21,22 +23,21 @@ impl Location {
             radius: self.radius * 1.7,
             color: highlighted.unwrap_or(Color::DarkGray),
         });
+    }
 
-        // Highlight (either animate ship or just star in the middle?)
-        if let Some(highlight_color) = highlighted {
-            ctx.draw(&Rectangle{
-                x: self.x-0.5,
-                y: self.y-0.5,
-                width: 1.0,
-                height: 1.0,
-                color: highlight_color,
-            });
-        }
+    pub fn draw_current(&self, ctx: &mut Context) {
+        ctx.print(
+            self.x-(self.radius/2.0), self.y+(self.radius*2.0),
+            "You are here".green().bold()
+        );
     }
 }
 
+#[derive(Debug)]
 pub struct StarMap {
     locations: Vec<Location>,
+    selected_location: usize,
+    current_location: usize,
 }
 
 impl StarMap {
@@ -60,7 +61,27 @@ impl StarMap {
             radius: 3.0,
             color: Color::LightGreen,
         });
-        StarMap { locations }
+        StarMap { 
+            locations,
+            selected_location: 0,
+            current_location: 0,
+        }
+    }
+
+    pub fn handle_press_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Left   => { self.selected_location = (self.selected_location + self.locations.len() - 1) % self.locations.len() },
+            KeyCode::Right  => { self.selected_location = (self.selected_location + self.locations.len() + 1) % self.locations.len() },
+            KeyCode::Enter  => { 
+                if self.current_location == self.selected_location {
+                    // TODO: display popup with location info
+                } else {
+                    // TODO: fill up gauge before travelling by holding / not cancelling
+                    self.current_location = self.selected_location
+                }
+            }
+            _ => {},
+        }
     }
 }
 
@@ -69,8 +90,9 @@ impl Widget for &StarMap {
         Canvas::default()
             .paint(|ctx| {
                 // Draw each location
-                for location in self.locations.iter() {
-                    if location.radius == 5.0 {
+                for (i, location) in self.locations.iter().enumerate() {
+                    if i == self.current_location { location.draw_current(ctx); }
+                    if i == self.selected_location {
                         location.draw(ctx, Some(Color::White));
                     } else {
                         location.draw(ctx, None);
@@ -91,9 +113,7 @@ impl Widget for &StarMap {
                     y2: 30.0,
                     color: Color::DarkGray,
                 });
-                // TODO: highlight current position
-                // TODO: hightlight selected position on link and on location
-                // TODO: show box displaying info about location
+                // TODO: highlight selected position on link and on location
             })
             .x_bounds([0.0, 100.0])
             .y_bounds([0.0, 100.0])

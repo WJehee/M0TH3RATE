@@ -64,18 +64,20 @@ impl MenuState {
 
 #[derive(Debug)]
 pub struct App {
-    menu: MenuState,
     exit: bool,
+    menu: MenuState,
+    starmap: StarMap,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
+            exit: false,
             menu: MenuState {
                 list_state: ListState::default().with_selected(Some(0)),
                 selected: MenuItem::StarMap,
             },
-            exit: false,
+            starmap: StarMap::new(),
         }
     }
 
@@ -95,6 +97,10 @@ impl App {
         if let event::Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 self.handle_press_event(key);
+                match self.menu.selected {
+                    MenuItem::StarMap => { self.starmap.handle_press_event(key); },
+                    _ => {}
+                }
             }
         }
         Ok(())
@@ -189,9 +195,8 @@ impl Widget for &mut App {
         let inner = block.inner(right);
         block.render(right, buf);
 
-        let map = StarMap::new();
         match self.menu.selected {
-            MenuItem::StarMap   => { map.render(inner, buf); },
+            MenuItem::StarMap   => { self.starmap.render(inner, buf); },
             MenuItem::Crew      => {},
             MenuItem::Info      => {},
         }
