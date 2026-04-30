@@ -150,8 +150,8 @@ impl Widget for &GalacticMap {
         Canvas::default()
             .paint(|ctx| {
                 for system in &self.solar_systems {
-                    let mut color = Color::White;
-                    let mut size = MOVE_DISTANCE * 2.0;
+                    let color = Color::White;
+                    let size = MOVE_DISTANCE * 2.0;
 
                     // DEBUGGING ONLY
                     // if system.has_component() {

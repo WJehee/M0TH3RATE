@@ -115,6 +115,7 @@ _______________________
      \_____v_____/
 "#;
 
+#[allow(dead_code)]
 struct CrewMember {
     name: String,
     picture: String,

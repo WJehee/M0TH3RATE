@@ -15,7 +15,7 @@ use tachyonfx::{fx, EffectManager};
 use throbber_widgets_tui::{ThrobberState};
 
 use crate::{
-    components::{crew::CrewStatus, galaxy_map::GalacticMap, resources::Resources, star_map::StarMap}, storage::Storage, tui, user::User, util::{self, Event}
+    components::{crew::CrewStatus, diagnostics::Diagnostics, galaxy_map::GalacticMap, resources::Resources, star_map::StarMap}, storage::Storage, tui, user::User, util::{self, Event}
 };
 
 #[derive(Debug, Copy, Clone, FromPrimitive, ToPrimitive)]
@@ -23,6 +23,7 @@ enum MenuItem {
     GalacticMap = 0,
     StarMap,
     Crew,
+    Diagnostics,
 }
 
 impl fmt::Display for MenuItem {
@@ -31,6 +32,7 @@ impl fmt::Display for MenuItem {
             MenuItem::GalacticMap => "Sterren kaart",
             MenuItem::StarMap => "Zonnestelsels",
             MenuItem::Crew => "Crew",
+            MenuItem::Diagnostics => "Diagnostics",
         };
         write!(f, "{}", res)
     }
@@ -47,9 +49,9 @@ impl MenuState {
     fn select(&mut self, offset: i8) {
         let current = self.selected as i8;
         let next = current + offset;
-        if next == -1 { 
+        if next == -1 {
             // Set to last item in the list
-            self.selected = MenuItem::Crew
+            self.selected = MenuItem::Diagnostics
         } else {
             self.selected = match FromPrimitive::from_i8(next) {
                 Some(d2) => d2,
@@ -81,6 +83,7 @@ pub struct App {
     starmap: Option<StarMap>,
     galaxy: GalacticMap,
     crew: CrewStatus,
+    diagnostics: Diagnostics,
     event: bool,
 }
 
@@ -113,6 +116,7 @@ impl App {
             starmap: None,
             galaxy: GalacticMap::new(solar_systems.clone(), pos),
             crew: CrewStatus{},
+            diagnostics: Diagnostics::new(),
             event: false,
         };
         result.galaxy.update_system();
@@ -151,6 +155,7 @@ impl App {
 
     fn on_tick(&mut self) {
         self.throbber_state.calc_next();
+        self.diagnostics.tick();
     }
 
     fn render_frame(&mut self, frame: &mut Frame, elapsed: Duration) {
@@ -276,6 +281,7 @@ impl App {
             gmap.alignment(Alignment::Center),
             Line::from(MenuItem::StarMap.to_string()).alignment(Alignment::Center),
             Line::from(MenuItem::Crew.to_string()).alignment(Alignment::Center),
+            Line::from(MenuItem::Diagnostics.to_string()).alignment(Alignment::Center),
         ])
             .style(Style::default().fg(Color::White))
             .highlight_style(Style::default()
@@ -295,7 +301,7 @@ impl Widget for &mut App {
             Constraint::Percentage(65),
         ]).areas(area);
 
-        let [title, list, status, resources] = Layout::default()
+        let [title, list, _status, resources] = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Percentage(40),
@@ -347,12 +353,13 @@ impl Widget for &mut App {
 
         match self.menu.active {
             MenuItem::GalacticMap => { self.galaxy.render(inner, buf); }
-            MenuItem::StarMap   => { 
+            MenuItem::StarMap   => {
                 if let Some(map) = &self.starmap {
                     map.render(inner, buf);
                 }
             },
             MenuItem::Crew      => { self.crew.render(inner, buf); },
+            MenuItem::Diagnostics => { self.diagnostics.render(inner, buf); },
         }
     }
 }

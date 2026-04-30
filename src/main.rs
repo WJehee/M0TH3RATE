@@ -33,7 +33,19 @@ fn main() -> Result<()> {
     };
     let mut terminal = tui::init()?;
 
-    let user = login::LoginScreen::new(storage.users.clone()).run(&mut terminal)?;
+    // let user = login::LoginScreen::new(storage.users.clone()).run(&mut terminal)?;
+    let user = storage.users.first().cloned().unwrap_or(user::User {
+        username: String::from("captain"),
+        password_start: String::new(),
+        password_attempts: 0,
+        password_attempts_max: 0,
+        password: String::new(),
+        pos_x: 0.0,
+        pos_y: 0.0,
+        fuel: 100,
+        crystals: 0,
+        reputation: 0,
+    });
     let _app_result = app::App::new(storage, user).run(&mut terminal);
 
     tui::restore()?;
