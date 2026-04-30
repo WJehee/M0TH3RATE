@@ -12,10 +12,10 @@ use ratatui::{
     crossterm::event::{self, KeyCode, KeyEvent, KeyEventKind},
 };
 use tachyonfx::{fx, EffectManager};
-use throbber_widgets_tui::{ThrobberState};
+use throbber_widgets_tui::ThrobberState;
 
 use crate::{
-    components::{crew::CrewStatus, diagnostics::Diagnostics, galaxy_map::GalacticMap, resources::Resources, star_map::StarMap}, storage::Storage, tui, user::User, util::{self, Event}
+    components::{crew::CrewStatus, diagnostics::Diagnostics, galaxy_map::GalacticMap, notifications::{Level, Notifications}, resources::Resources, star_map::StarMap}, storage::Storage, tui, user::User, util::{self, Event}
 };
 
 #[derive(Debug, Copy, Clone, FromPrimitive, ToPrimitive)]
@@ -72,7 +72,7 @@ pub struct App {
     last_key_pressed: Option<event::KeyEvent>,
     last_press_time: Instant,
     effects: EffectManager<()>,
-    throbber_state: throbber_widgets_tui::ThrobberState,
+    throbber_state: ThrobberState,
 
     // Data
     storage: Storage,
@@ -84,7 +84,7 @@ pub struct App {
     galaxy: GalacticMap,
     crew: CrewStatus,
     diagnostics: Diagnostics,
-    event: bool,
+    notifications: Notifications,
 }
 
 impl App {
@@ -117,7 +117,7 @@ impl App {
             galaxy: GalacticMap::new(solar_systems.clone(), pos),
             crew: CrewStatus{},
             diagnostics: Diagnostics::new(),
-            event: false,
+            notifications: Notifications::default(),
         };
         result.galaxy.update_system();
         if let Some(system) = result.galaxy.get_current_system() {
@@ -189,11 +189,15 @@ impl App {
                     for event in events {
                         match event {
                             Event::Item(diff) => {
+                                let fuel_before = self.user.fuel;
                                 self.user.crystals += diff.crystals;
                                 self.user.fuel += diff.fuel;
                                 self.storage.components += diff.components;
                                 // Earn 1 reputation per component
                                 self.user.reputation += diff.components;
+                                if fuel_before > 0 && self.user.fuel <= 0 {
+                                    self.notifications.push(Level::Critical, "Brandstof is op!");
+                                }
                             },
                             Event::NewSystem(Some(system)) => {
                                 self.starmap = Some(system.to_star_map());
@@ -205,7 +209,7 @@ impl App {
                                 }
                             },
                             Event::RandomEvent => {
-                                self.event = true;
+                                self.notifications.push(Level::Warning, "Willekeurige gebeurtenis! Ga naar de leiding.");
                             },
                         }
                     }
@@ -231,7 +235,7 @@ impl App {
                 // TODO: apply the effect only to the submodule / widget in the screen
                 // self.effects.add_effect(fx::coalesce(1000));
             },
-            KeyCode::Char('q') => { self.event = false; }
+            KeyCode::Char('n') => { self.notifications.dismiss(); }
             _ => {},
         }
     }
@@ -244,6 +248,8 @@ impl App {
             "<Up>".green().bold(),
             " Move down ".into(),
             "<Down>".green().bold(),
+            " Sluit melding ".into(),
+            "<n>".green().bold(),
             " Quit ".into(),
             "<Esc> ".green().bold(),
         ]);
@@ -301,7 +307,7 @@ impl Widget for &mut App {
             Constraint::Percentage(65),
         ]).areas(area);
 
-        let [title, list, _status, resources] = Layout::default()
+        let [title, list, status, resources] = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Percentage(40),
@@ -314,27 +320,9 @@ impl Widget for &mut App {
         self.render_title(title, buf);
         self.render_list(list, buf);
 
+        StatefulWidget::render(&self.notifications, status, buf, &mut self.throbber_state);
+
         // TODO: render current planet stats
-
-        // if self.user.fuel == 0 {
-        //     let full = throbber_widgets_tui::Throbber::default()
-        //         .label("Geen brandstof...")
-        //         .style(ratatui::style::Style::default().fg(ratatui::style::Color::Cyan))
-        //         .throbber_style(ratatui::style::Style::default().fg(ratatui::style::Color::Red).add_modifier(ratatui::style::Modifier::BOLD))
-        //         .throbber_set(throbber_widgets_tui::BLACK_CIRCLE)
-        //         .use_type(throbber_widgets_tui::WhichUse::Spin);
-        //     ratatui::prelude::StatefulWidget::render(full, status, buf, &mut self.throbber_state);
-        // }
-
-        // if self.event {
-        //     let full = throbber_widgets_tui::Throbber::default()
-        //         .label("RANDOM EVENT! ga naar de leiding!")
-        //         .style(ratatui::style::Style::default().fg(ratatui::style::Color::Cyan))
-        //         .throbber_style(ratatui::style::Style::default().fg(ratatui::style::Color::Red).add_modifier(ratatui::style::Modifier::BOLD))
-        //         .throbber_set(throbber_widgets_tui::BLACK_CIRCLE)
-        //         .use_type(throbber_widgets_tui::WhichUse::Spin);
-        //     ratatui::prelude::StatefulWidget::render(full, status, buf, &mut self.throbber_state);
-        // }
 
         Resources {
             crystals: self.user.crystals,

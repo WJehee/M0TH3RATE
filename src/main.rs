@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         password: String::new(),
         pos_x: 0.0,
         pos_y: 0.0,
-        fuel: 100,
+        fuel: 2,
         crystals: 0,
         reputation: 0,
     });
